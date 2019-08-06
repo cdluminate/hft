@@ -9,32 +9,21 @@ Typical Usage
 
 Fold a directory of (hatless) plain files in verbose mode::
 
-  hft -v -f debian -d debian.hft
+  hft -v -f srcdir/ -d foobar.hft
 
 Unfold an HFT file into the directory in verbose mode::
 
-  hft -v -u debian.hft -d destdir
+  hft -v -u foobar.hft -d destdir/
 
 Hatless Folded Text (HFT) Specification
 ---------------------------------------
-
-Hatless Folded Text basically resembles sort of plain text 'tar'. An
-HFT file starts with an optional plain text header (in virtually any
-format, as long as there is no HFT control message), followed by a
-series of HFT control messages and file contents. All of the control
-messages defined by HFT start with a "hat" (^), so HFT doesn't expect
-any line that starts with the "hat" (^) in the optional header or
-file content. That's why HFT is called "Hatless" Folded Text.
-
-HFT supports the following control messages:
 
 1. "^# COMMENT"
    Single-line comment. Can be placed anywhere in an HFT file.
 
    Example::
 
-       ^# This is a comment
-       ^#--------8<--------8<--------8<--------
+        ^# This is a comment
 
 2. "^ FILENAME [MODE]"
    Any non-control content following this line is regarded as the content
@@ -61,41 +50,8 @@ HFT supports the following control messages:
    Example::
 
        ^ bin/hello-world -> helloworld
-
-5. "^$ MARK <STRING_LITERAL|CMD_LINE>"
-   Define a placeholder "MARK". HFT will replace "@MARK@" placeholders
-   in the file content with the given string literal, or the stdout of a
-   given command line.
-
-   Example::
-
-       ^$ CC gcc-5
-       ^$ FOOBAR "quotation marks will be copied as well"
-       ^$ HFT:FOOBAR "punctuations such as colon also form valid varname"
-       ^$ DEB_HOST_MULTIARCH `dpkg-architecture -qDEB_HOST_MULTIARCH`
-       ^$ HOSTNAME `hostname`
-       ^$ UNAME `uname -a`
-
-Note, HFT doesn't support binary file content, as it violates the principle
-that HFT should be fully human-readable. If you must store binary content in
-HFT, use non-binary codings such as BASE64.
-
-HFT Example
------------
-
-The following example is a valid HFT, with a plain text header::
-
-    This HFT file can be unfolded into an executable shell script `bin/hello`,
-    and a symbol link `bin/hello` pointing to the executable `hello`.
-    ^$ HFT:WHOAMI `whoami`
-    ^$ HFT:HOSTNAME `hostname`
-    ^$ HFT:KERNEL `uname -s`
-    ^ bin/hello 0o755
-    #!/bin/sh -e
-    echo "Hello, @HFT:WHOAMI@! I'm @HFT:HOSTNAME@, a machine running @HFT:KERNEL@.";
-    ^ bin/hi -> hello
 '''
-__VERSION__ = '0.1a'
+__VERSION__ = '0.2a'
 import argparse
 import sys, os, re, subprocess, shlex
 import chardet
@@ -163,7 +119,7 @@ def hft_unfold(hft: List[str], destdir:str='', *,
     '''
     Unfold an HFT file.
     '''
-    curline, rest, fp, fmode, wmode, hftmarks = None, hft, None, None, 'w', {}
+    curline, rest, fp, fmode, wmode = None, hft, None, None, 'w'
     r_comment     = re.compile('^\^#.*$')
     r_file_mode   = re.compile('^\^\s*([/\S]+)\s+([o\d]+)\s*$')
     r_file        = re.compile('^\^\s*([/\S]+)\s*$')
@@ -181,18 +137,6 @@ def hft_unfold(hft: List[str], destdir:str='', *,
         if r_comment.match(curline):
             # A COMMENT LINE
             continue
-        elif r_var_literal.match(curline):
-            varname, literal = r_var_literal.match(curline).groups()
-            hftmarks[varname] = literal
-            if verbose: print(f'{_C162}HFT-mark:{_c}',
-                    f'{_C33}{varname}{_c}', '=>', f'{_C35}{literal}{_c}')
-        elif r_var_cmd.match(curline):
-            varname, cmd = r_var_cmd.match(curline).groups()
-            cmdout = subprocess.Popen(shlex.split(cmd),
-                    stdout=subprocess.PIPE).stdout.read().decode().strip()
-            hftmarks[varname] = cmdout
-            if verbose: print(f'{_C162}HFT-mark:{_c}',
-                    f'{_C33}{varname}{_c}', '=>', f'{_C35}{cmdout}{_c}')
         elif any([r_file.match(curline), r_file_mode.match(curline),
                   r_file_ap.match(curline)]):
             # A PATH-MODE LINE
