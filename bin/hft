@@ -50,8 +50,11 @@ Hatless Folded Text (HFT) Specification
    Example::
 
        ^ bin/hello-world -> helloworld
+
+5. "@TOKEN@"
+   Placeholder tokens to be replaced later. (To be implemented)
 '''
-__VERSION__ = '0.2a'
+__VERSION__ = '0.3~alpha'
 import argparse
 import sys, os, re, subprocess, shlex
 import chardet
